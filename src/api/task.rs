@@ -136,24 +136,43 @@ fn split_filter_csv(execution_options: ExecuteOptions) -> HashMap<String, Rc<Ref
         }
 
         let r = record.get(&*column_name);
-        value_to_target_data.get(r.unwrap()).unwrap().borrow_mut().data.push(record);
+        match r {
+            Some(value) => {
+                let hashmap=value_to_target_data.get(value);
+                match hashmap {
+                    Some(x) => {
+                        x.borrow_mut().data.push(record);
+                    },
+                    None => continue,
+                }
+            },
+            None => continue,
+        }
+
     };
 
 
     let smtp = execution_options.output_options.smtp;
     match smtp {
-        Some(x) => {
-            for (k, v) in value_to_target_data.iter() {
+        Some(_x) => {
+            for (_k, v) in value_to_target_data.iter() {
                 let mut wtr = Writer::from_writer(vec![]);
-                wtr.write_record(v.borrow_mut().data.get(0).unwrap().keys());
-                for record in v.borrow_mut().data.iter(){
-                    wtr.write_record(record.clone().into_values());
+
+                for key in v.borrow().data.get(0).unwrap().keys(){
+                    wtr.write_field(key);
+                }
+                wtr.write_record(None::<&[u8]>);
+                for record in v.borrow().data.iter(){
+                    for key in v.borrow().data.get(0).unwrap().keys(){
+                        wtr.write_field(record.get(key).unwrap());
+
+                    }
+                    wtr.write_record(None::<&[u8]>);
                 }
 
                 let targets=v.borrow().targets.clone();
                 let csv_data =wtr.into_inner().unwrap();
-                let data=String::from_utf8(csv_data).unwrap();
-                send_email(targets, data);
+                send_email(targets, csv_data);
             }
 
         },

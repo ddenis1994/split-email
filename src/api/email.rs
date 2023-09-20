@@ -1,11 +1,11 @@
-use std::env;
+use std::{env};
 use lettre::message::header::ContentType;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
-use lettre::message::{Attachment, header, Mailboxes, MultiPart, SinglePart};
+use lettre::message::{Attachment, header, Mailboxes, MultiPart};
 use lettre::transport::smtp::PoolConfig;
 
-pub fn send_email(email_addresses: Vec<String>, body: String) {
+pub fn send_email(email_addresses: Vec<String>, body: Vec<u8>) {
     let mut mailboxes = Mailboxes::new();
     for address in email_addresses {
         mailboxes.push(address.parse().unwrap());
@@ -18,13 +18,8 @@ pub fn send_email(email_addresses: Vec<String>, body: String) {
         .from("MDclone <nobody@domain.tld>".parse().unwrap())
         .mailbox(to_header)
         .subject("Happy new year")
-        .header(ContentType::TEXT_PLAIN)
         .multipart(
             MultiPart::mixed()
-                .singlepart(SinglePart::builder()
-                    .header(header::ContentType::TEXT_HTML)
-                    .body("happy".to_string())
-                )
                 .singlepart(attachment)
         )
         .unwrap();
