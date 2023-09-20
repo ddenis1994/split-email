@@ -3,7 +3,7 @@ use actix_web::{HttpServer, App, middleware::Logger, web};
 use dotenv::dotenv;
 use utoipa::{Modify, OpenApi};
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
-use utoipa_redoc::{Servable};
+// use utoipa_redoc::{Servable};
 use utoipa_swagger_ui::SwaggerUi;
 use handlebars::Handlebars;
 use serde_json::json;
@@ -45,6 +45,7 @@ async fn main() -> std::io::Result<()> {
     api::task::FilterOptions,
     api::task::OutputOptions,
     api::task::FileType,
+    api::task::ParseConfig,
     )
     ),
     tags(
