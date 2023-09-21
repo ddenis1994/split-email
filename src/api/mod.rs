@@ -1,3 +1,3 @@
 pub mod task;
-mod email;
+pub(crate) mod email;
 mod sftp;

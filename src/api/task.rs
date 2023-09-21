@@ -2,8 +2,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::File;
 use std::rc::Rc;
-use std::{thread};
-use actix_web::{post};
+// use std::{thread};
+use actix_web::{post, web};
 use actix_web::web::{Json};
 use csv::{Reader, Writer};
 use serde::{Deserialize};
@@ -11,8 +11,9 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 use xlsxwriter::Workbook;
 use xlsxwriter::worksheet::WorksheetCol;
-use crate::api::email::send_email;
 use tempdir::TempDir;
+use crate::api::email::EmailService;
+use crate::AppState;
 
 
 #[derive(Debug, Deserialize, ToSchema, Clone)]
@@ -30,7 +31,7 @@ pub struct SplitOptions {
 }
 
 impl SplitOptions {
-    pub fn execute(&self, mut reader: Reader<File>, file_type: &FileType) {
+    pub fn execute(&self, mut reader: Reader<File>, file_type: &FileType, email_service: &EmailService) {
         let value_to_target_data = self.target_to_value.iter().fold(HashMap::<String, Rc<RefCell<TargetData>>>::new(), |mut acc, e| {
             let target_data = Rc::new(RefCell::new(TargetData {
                 targets: e.targets.clone(),
@@ -43,7 +44,7 @@ impl SplitOptions {
         });
 
         for result in reader.deserialize::<HashMap<String, String>>() {
-            let  record = result.unwrap();
+            let record = result.unwrap();
 
             let value = record.get(&self.column_name);
 
@@ -78,7 +79,7 @@ impl SplitOptions {
                 let targets = v.borrow().targets.clone();
                 workbook.close().unwrap();
 
-                self.output_options.export(targets, &file_path);
+                self.output_options.export(targets, &file_path, email_service);
             }
         } else if let FileType::CSV = file_type {
             for (_k, v) in value_to_target_data.iter() {
@@ -87,7 +88,7 @@ impl SplitOptions {
                 let csv_file_path = dir.path().join(uuid).into_os_string().into_string().unwrap();
                 let mut wtr = Writer::from_path(&csv_file_path).expect("cannot create temp file");
 
-                for  key in v.borrow().data.get(0).unwrap().keys() {
+                for key in v.borrow().data.get(0).unwrap().keys() {
                     let _ = &wtr.write_field(key);
                 }
                 let _ = &wtr.write_record(None::<&[u8]>);
@@ -100,7 +101,7 @@ impl SplitOptions {
                 }
                 let targets = v.borrow().targets.clone();
 
-                self.output_options.export(targets, &csv_file_path);
+                self.output_options.export(targets, &csv_file_path, email_service);
             }
         }
     }
@@ -135,12 +136,12 @@ pub struct ParseConfig {
 }
 
 impl ParseConfig {
-    pub(crate) fn parse_csv(&self, reader: Reader<File>) {
+    pub(crate) fn parse_csv(&self, reader: Reader<File>, email_service: &EmailService) {
         // if let Some(filter_options) = &self.filter_options {
         //     filter_options.execute_on_csv_record(reader);
         // }
         if let Some(split_options) = &self.split_options {
-            split_options.execute(reader, &self.file_type)
+            split_options.execute(reader, &self.file_type, email_service)
         }
     }
 }
@@ -158,10 +159,10 @@ pub struct OutputOptions {
 }
 
 impl OutputOptions {
-    pub fn export(&self, targets: Vec<String>, file_path: &String) {
+    pub fn export(&self, targets: Vec<String>, file_path: &String, email_service: &EmailService) {
         if let Some(smtp) = &self.smtp {
             if *smtp {
-                send_email(targets, file_path);
+                let _a = email_service.send_file(targets, file_path);
             }
         }
 
@@ -180,24 +181,15 @@ pub struct ExecuteOptions {
 }
 
 impl ExecuteOptions {
-    pub async fn execute(&self) {
+    pub async fn execute(&self, email_service: &EmailService) {
         let csv_file = self.csv_file.clone(); // Assuming `csv_file` can be cloned.
         let parse_config = self.parse_config.clone(); // Assuming `parse_config` can be cloned.
 
-        let handle = thread::spawn(move || {
-            let reader = Reader::from_path(csv_file).expect("cannot find small.csv");
-            if let Some(parse_config) = &parse_config {
-                parse_config.parse_csv(reader);
-            }
-        });
-        match handle.join() {
-            Ok(_) => {
-                println!("ok");
-            }
-            Err(_) => {
-                println!("err");
-            }
-        };
+
+        let reader = Reader::from_path(csv_file).expect("cannot find small.csv");
+        if let Some(parse_config) = &parse_config {
+            parse_config.parse_csv(reader, &email_service);
+        }
     }
 }
 
@@ -214,9 +206,9 @@ responses(
 )
 )]
 #[post("/execute")]
-pub async fn get_task(info: Json<ExecuteOptions>) -> String {
+pub async fn get_task(info: Json<ExecuteOptions>, data: web::Data<AppState>) -> String {
     let inner_info = info.into_inner();
-    inner_info.execute().await;
+    inner_info.execute(&data.mail_service).await;
 
     format!("operation is done")
 }

@@ -14,6 +14,13 @@ use api::task::{
     get_task
 };
 
+use api::email::EmailService;
+
+#[derive(Clone)]
+pub struct AppState {
+    pub mail_service: EmailService,
+}
+
 
 // type DbPool = r2d2::Pool<r2d2::ConnectionManager<SqliteConnection>>;
 
@@ -84,11 +91,22 @@ async fn main() -> std::io::Result<()> {
     let port =  env::var("PORT").unwrap_or("8080".to_string()).parse::<u16>().unwrap();
     let bind_address = env::var("BIND_ADDRESS").unwrap_or("127.0.0.1".to_string());
 
-
     HttpServer::new(move || {
         let logger = Logger::default();
+
+        let mut mail_service = EmailService{
+            mailer: None,
+        };
+
+        mail_service.init().expect("Could not initialize email service");
+
+        let data = AppState {
+            mail_service,
+        };
+
         App::new()
             .wrap(logger)
+            .app_data(web::Data::new(data.clone()))
             .service(
                 web::scope("/api")
                     .service(get_task)
