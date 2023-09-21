@@ -2,20 +2,17 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::File;
 use std::rc::Rc;
-use std::thread;
-// use super::email::send_email;
-// use std::env;
-// use std::fmt::format;
+use std::{fs, thread};
 use actix_web::{post};
 use actix_web::web::{Json};
 use csv::{Reader, Writer};
 use serde::{Deserialize};
-// use serde_json::Value::String;
-//
-// extern crate reqwest;
-
 use utoipa::ToSchema;
+use uuid::Uuid;
+use xlsxwriter::Workbook;
+use xlsxwriter::worksheet::WorksheetCol;
 use crate::api::email::send_email;
+use tempdir::TempDir;
 
 
 #[derive(Debug, Deserialize, ToSchema, Clone)]
@@ -57,24 +54,40 @@ impl SplitOptions {
             }
         };
 
+
+
+
         for (_k, v) in value_to_target_data.iter() {
             let mut wtr = Writer::from_writer(vec![]);
+            let uuid = Uuid::new_v4().to_string();
+            let dir = TempDir::new("act").expect("cannot create tmpdir");
+            let file_path = dir.path().join(uuid).into_os_string().into_string().unwrap();
 
-            for key in v.borrow().data.get(0).unwrap().keys() {
-                let _ = wtr.write_field(key);
+
+            let mut  workbook = Workbook::new(&file_path).expect("cannot create workbook");
+
+            let mut sheet = workbook.add_worksheet(None).expect("can add sheet");
+
+            for (i,key) in v.borrow().data.get(0).unwrap().keys().enumerate() {
+                let _ = &wtr.write_field(key);
+                sheet.write_string(0, i as WorksheetCol, key, None).expect("TODO: panic message");
             }
-            let _ = wtr.write_record(None::<&[u8]>);
+            let _ = &wtr.write_record(None::<&[u8]>);
+            let mut y_index = 1;
             for record in v.borrow().data.iter() {
-                for key in v.borrow().data.get(0).unwrap().keys() {
+                for (i,key) in v.borrow().data.get(0).unwrap().keys().enumerate() {
                     let _ = wtr.write_field(record.get(key).unwrap());
+                    sheet.write_string(y_index, i as WorksheetCol, record.get(key).unwrap(), None).expect("TODO: panic message");
                 }
+                y_index += 1;
                 let _ = wtr.write_record(None::<&[u8]>);
             }
 
             let targets = v.borrow().targets.clone();
             let csv_data = wtr.into_inner().unwrap();
+            workbook.close().unwrap();
 
-            self.output_options.export(targets, csv_data);
+            self.output_options.export(targets, csv_data,file_path);
         }
     }
 }
@@ -131,11 +144,11 @@ pub struct OutputOptions {
 }
 
 impl OutputOptions {
-    pub fn export(&self, targets: Vec<String>, mut data: Vec<u8>) {
+    pub fn export(&self, targets: Vec<String>, mut data: Vec<u8>, uuid: String) {
         if let Some(file_type) = &self.file_type {
             data = match file_type {
                 FileType::EXCEL => {
-                    self.convert_csv_excel(data)
+                    self.convert_csv_excel(uuid)
                 }
                 _ => data
             }
@@ -154,8 +167,8 @@ impl OutputOptions {
         }
     }
 
-    fn convert_csv_excel(&self, csv_data: Vec<u8>) -> Vec<u8> {
-        csv_data
+    fn convert_csv_excel(&self, csv_data: String) -> Vec<u8> {
+        fs::read(csv_data).unwrap()
     }
 }
 

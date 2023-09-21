@@ -11,8 +11,8 @@ pub fn send_email(email_addresses: Vec<String>, body: Vec<u8>) {
         mailboxes.push(address.parse().unwrap());
     }
     let to_header: header::To = mailboxes.into();
-    let content_type = ContentType::parse("text/csv").unwrap();
-    let attachment = Attachment::new("data.csv".to_string()).body(body, content_type);
+    let content_type = ContentType::parse("application/ms-excel").unwrap();
+    let attachment = Attachment::new("data.xlsx".to_string()).body(body, content_type);
 
     let email = Message::builder()
         .from("MDclone <nobody@domain.tld>".parse().unwrap())
