@@ -28,6 +28,8 @@ utoipa-redoc = { version = "0.1", features = ["actix-web"] }
 handlebars = "4.4.0"
 xlsxwriter = "0.6.0"
 tempdir = { version = "0.3.7", features = [] }
+mime_guess = "2.0.4"
+
 
 [dev-dependencies]
 

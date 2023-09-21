@@ -915,6 +915,7 @@ dependencies = [
  "handlebars",
  "lettre",
  "log",
+ "mime_guess",
  "reqwest",
  "serde",
  "serde_json",
