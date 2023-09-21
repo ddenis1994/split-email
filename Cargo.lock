@@ -3,6 +3,36 @@
 version = 3
 
 [[package]]
+name = "act"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "csv",
+ "derive_more",
+ "diesel",
+ "dotenv",
+ "env_logger",
+ "futures",
+ "handlebars",
+ "lettre",
+ "log",
+ "mime_guess",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "ssh2",
+ "strum",
+ "strum_macros",
+ "tempdir",
+ "utoipa",
+ "utoipa-rapidoc",
+ "utoipa-redoc",
+ "utoipa-swagger-ui",
+ "uuid",
+ "xlsxwriter",
+]
+
+[[package]]
 name = "actix-codec"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -900,36 +930,6 @@ name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
-
-[[package]]
-name = "hello-world-rust"
-version = "0.1.0"
-dependencies = [
- "actix-web",
- "csv",
- "derive_more",
- "diesel",
- "dotenv",
- "env_logger",
- "futures",
- "handlebars",
- "lettre",
- "log",
- "mime_guess",
- "reqwest",
- "serde",
- "serde_json",
- "ssh2",
- "strum",
- "strum_macros",
- "tempdir",
- "utoipa",
- "utoipa-rapidoc",
- "utoipa-redoc",
- "utoipa-swagger-ui",
- "uuid",
- "xlsxwriter",
-]
 
 [[package]]
 name = "hermit-abi"
