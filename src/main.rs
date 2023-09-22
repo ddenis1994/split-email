@@ -10,16 +10,19 @@ use serde_json::json;
 
 mod api;
 mod email;
+mod sftp;
 
 use api::task::{
     get_task
 };
 use crate::email::email_service::EmailService;
+use crate::sftp::sftp_service::SftpService;
 
 
 #[derive(Clone)]
 pub struct AppState {
     pub mail_service: EmailService,
+    pub sftp_service: SftpService,
 }
 
 
@@ -27,7 +30,6 @@ pub struct AppState {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-
     let mut reg = Handlebars::new();
 
     // register template using given name
@@ -59,7 +61,7 @@ async fn main() -> std::io::Result<()> {
     tags(
     (name = "todo", description = "Todo management endpoints.")
     ),
-    modifiers(&SecurityAddon)
+    modifiers(& SecurityAddon)
     )]
     struct ApiDoc;
 
@@ -74,7 +76,7 @@ async fn main() -> std::io::Result<()> {
                         .scheme(HttpAuthScheme::Bearer)
                         .bearer_format("JWT")
                         .build(),
-                )
+                ),
             );
             components.add_security_scheme(
                 "basicAuth",
@@ -82,27 +84,34 @@ async fn main() -> std::io::Result<()> {
                     HttpBuilder::new()
                         .scheme(HttpAuthScheme::Basic)
                         .build(),
-                )
+                ),
             );
         }
     }
 
     let openapi = ApiDoc::openapi();
 
-    let port =  env::var("PORT").unwrap_or("8080".to_string()).parse::<u16>().unwrap();
+    let port = env::var("PORT").unwrap_or("8080".to_string()).parse::<u16>().unwrap();
     let bind_address = env::var("BIND_ADDRESS").unwrap_or("127.0.0.1".to_string());
+
+    let mut mail_service = EmailService {
+        mailer: None,
+    };
+
+    mail_service.init().expect("Could not initialize email service");
+
+    let mut sftp_service = SftpService {
+        session: None,
+    };
+
 
     HttpServer::new(move || {
         let logger = Logger::default();
 
-        let mut mail_service = EmailService{
-            mailer: None,
-        };
-
-        mail_service.init().expect("Could not initialize email service");
 
         let data = AppState {
-            mail_service,
+            mail_service: mail_service.clone(),
+            sftp_service: sftp_service.clone(),
         };
 
         App::new()
