@@ -9,12 +9,13 @@ use handlebars::Handlebars;
 use serde_json::json;
 
 mod api;
+mod email;
 
 use api::task::{
     get_task
 };
+use crate::email::email_service::EmailService;
 
-use api::email::EmailService;
 
 #[derive(Clone)]
 pub struct AppState {

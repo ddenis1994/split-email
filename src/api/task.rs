@@ -12,7 +12,7 @@ use uuid::Uuid;
 use xlsxwriter::Workbook;
 use xlsxwriter::worksheet::WorksheetCol;
 use tempdir::TempDir;
-use crate::api::email::EmailService;
+use crate::email::email_service::EmailService;
 use crate::AppState;
 
 
