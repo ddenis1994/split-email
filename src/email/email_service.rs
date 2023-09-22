@@ -1,4 +1,5 @@
 use std::{env, fs};
+use std::fmt::format;
 use lettre::message::header::ContentType;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
@@ -46,10 +47,7 @@ impl EmailService {
     }
 
     pub fn send_file(&self, email_addresses: Vec<String>, file_path: &str) -> Result<Response, &str> {
-        let guess = match mime_guess::from_path(&file_path).first() {
-            Some(mime) => mime.to_string(),
-            _ => return Err("Could not determine mime type!"),
-        };
+        let content_type = self.find_file_mime(file_path)?;
 
         let body = match fs::read(file_path) {
             Ok(body) => body,
@@ -67,10 +65,7 @@ impl EmailService {
             };
         }
         let to_header: header::To = mailboxes.into();
-        let content_type = match ContentType::parse(&guess) {
-            Ok(content_type) => content_type,
-            _ => return Err("Could not parse mime type!"),
-        };
+
         let mut file_ending: Vec<&str> = file_path.split(".").collect();
         let ending = match file_ending.pop() {
             Some(ending) => ending,
@@ -91,8 +86,24 @@ impl EmailService {
             _ => return Err("Could not create email!"),
         };
 
+        self.send_email(&email)
+    }
+
+    pub fn find_file_mime(&self, file_path: &str) -> Result<ContentType, &str> {
+        let guess = match mime_guess::from_path(&file_path).first() {
+            Some(mime) => mime.to_string(),
+            _ => return Err("Could not determine mime type!"),
+        };
+
+        match ContentType::parse(&guess) {
+            Ok(content_type) => Ok(content_type),
+            _ => return Err("Could not parse mime type!"),
+        }
+    }
+
+    pub fn send_email(&self, message: &Message) -> Result<Response, &str> {
         if let Some(mailer) = &self.mailer {
-            match mailer.send(&email) {
+            match mailer.send(&message) {
                 Ok(response) => Ok(response),
                 Err(e) => {
                     println!("Could not send email: {:?}", e);
