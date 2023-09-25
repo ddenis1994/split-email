@@ -1,5 +1,6 @@
 use std::env;
 use actix_web::{HttpServer, App, middleware::Logger, web};
+use diesel::{Connection, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
 use dotenv::dotenv;
 use utoipa::{Modify, OpenApi};
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
@@ -11,11 +12,14 @@ use serde_json::json;
 mod api;
 mod email;
 mod sftp;
+mod repository;
 
 use api::task::{
     get_task
 };
 use crate::email::email_service::EmailService;
+use crate::repository::{create_post, establish_connection};
+use crate::repository::models::Task;
 use crate::sftp::sftp_service::SftpService;
 
 
@@ -25,8 +29,6 @@ pub struct AppState {
     pub sftp_service: SftpService,
 }
 
-
-// type DbPool = r2d2::Pool<r2d2::ConnectionManager<SqliteConnection>>;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -103,6 +105,21 @@ async fn main() -> std::io::Result<()> {
     let mut sftp_service = SftpService {
         session: None,
     };
+
+    let connection = &mut establish_connection();
+
+    create_post(connection, "test3");
+
+    use self::repository::schema::tasks::dsl::*;
+    let results = tasks
+        .select(Task::as_select())
+        .load(connection)
+        .expect("Error loading posts");
+
+    println!("Displaying {} posts", results.len());
+    for post in results {
+        println!("{post:?}");
+    }
 
 
     HttpServer::new(move || {
